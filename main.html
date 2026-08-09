@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메모장 | 일정 &amp; 이슈 관리</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=Manrope:wght@400;500;600;700;800&amp;family=Noto+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/reset.css">
+<link rel="stylesheet" href="styles/app.css">
+</head>
+<body>
+		<main class="app-shell"><header class="topbar"><button class="menu-toggle" id="menuToggle" type="button" aria-label="메뉴 열기" aria-expanded="false">
+					<span>
+					</span>
+					<span>
+					</span>
+					<span>
+					</span>
+				</button>
+				<div class="today-summary">
+					<span id="todayLabel">
+					</span>
+					<strong id="summaryCount">0</strong>개의 할 일</div>
+					<button class="primary-button" id="primaryAction" type="button">+ 새 TODO</button>
+				</header><aside class="side-menu" id="sideMenu" hidden><div class="menu-header">
+						<p>메뉴</p>
+						<button class="close-button" id="closeMenu" type="button" aria-label="메뉴 닫기">×</button>
+					</div>
+					<nav class="menu-list" aria-label="주요 메뉴"><button class="menu-item active" data-view="todos" type="button">TODO</button>
+						<button class="menu-item" data-view="calendar" type="button">캘린더</button>
+						<button class="menu-item" data-view="issues" type="button">이슈 관리</button>
+					</nav><div class="storage-menu"><button class="folder-button" id="chooseDataFolder" type="button">저장 폴더 연결</button><p id="folderStatus">파일 저장 폴더를 연결해주세요</p></div></aside><div class="menu-dim" id="menuDim" hidden>
+				</div>
+				<div class="storage-gate" id="storageGate"><div><p class="eyebrow">LOCAL FILE STORAGE</p><h1>저장 폴더를 연결해주세요</h1><p>TODO, 일정, 이슈는 브라우저가 아닌 사용자가 선택한 폴더의 개별 파일로만 저장됩니다.</p><button class="primary-button" id="connectStorageFirst" type="button">저장 폴더 선택</button></div></div>
+				<section class="dashboard"><section class="todo-panel view-panel active" id="todos"><div class="section-heading">
+							<div>
+								<p class="eyebrow">PERSONAL QUEUE</p>
+								<h1>TODO</h1>
+								<p class="todo-subtitle">오늘과 앞으로의 할 일을 가볍게 정리하세요.</p>
+							</div>
+						</div>
+						<div class="todo-groups" id="todoGroups">
+						</div>
+					</section><section class="calendar-panel view-panel" id="calendar" hidden><div class="section-heading">
+							<div>
+								<p class="eyebrow">SCHEDULE BOARD</p>
+								<h1 id="calendarTitle">2026년 8월</h1>
+							</div>
+							<div class="calendar-actions">
+								<button class="icon-button" id="previousMonth" aria-label="이전 달">←</button>
+								<button class="today-button" id="goToday">오늘</button>
+								<button class="icon-button" id="nextMonth" aria-label="다음 달">→</button>
+							</div>
+						</div>
+						<div class="weekdays" aria-hidden="true">
+							<span>일</span>
+							<span>월</span>
+							<span>화</span>
+							<span>수</span>
+							<span>목</span>
+							<span>금</span>
+							<span>토</span>
+						</div>
+						<div class="calendar-grid" id="calendarGrid">
+						</div>
+						<p class="calendar-hint">일정을 클릭하면 내용을 확인하거나 수정할 수 있습니다.</p>
+					</section><section class="issue-panel view-panel" id="issues" hidden><div class="section-heading compact">
+							<div>
+								<p class="eyebrow">ISSUE TRACKER</p>
+								<h2>이슈 관리</h2>
+							</div>
+							<button class="add-issue" id="openIssueModal" type="button" aria-label="새 이슈 등록">+</button>
+						</div>
+						<div class="issue-search-box"><input id="issueTitleSearch" type="search" placeholder="이슈 제목을 검색하세요" autocomplete="off"><input id="issueTagFilter" type="search" placeholder="#TAG 필터" autocomplete="off"></div>
+						<div class="issue-stats" id="issueStats">
+						</div>
+						<div class="filter-row" id="issueFilters">
+							<button class="filter active" data-filter="all">전체</button>
+							<button class="filter" data-filter="open">진행 중</button>
+							<button class="filter" data-filter="resolved">해결됨</button>
+						</div>
+						<div class="issue-list" id="issueList">
+						</div>
+					</section>
+					<section class="issue-editor-panel view-panel" id="issueEditor" hidden>
+						<div class="issue-editor-top"><button class="back-button" id="backToIssues" type="button">← 이슈 목록</button><span>ISSUE NOTE</span><code class="record-id" id="editorIssueIdLabel"></code></div>
+						<form class="issue-editor" id="issueEditorForm">
+							<input id="editorIssueId" type="hidden">
+							<div class="issue-editor-heading"><input id="editorIssueTitle" required maxlength="80" placeholder="이슈 제목을 입력하세요"><input id="editorIssueTags" maxlength="200" placeholder="#MEDIA #FS 처럼 태그를 띄어쓰기로 입력하세요"></div>
+							<textarea id="editorIssueContent" required placeholder="이슈에 관한 내용을 자유롭게 기록하세요."></textarea>
+							<section class="ai-summary-placeholder"><div><p class="eyebrow">AI SUMMARY</p><h2>AI 요약</h2></div><p>AI 요약 기능은 추후 제공됩니다. 이 영역에 이슈의 핵심 내용을 3~5문장으로 정리할 예정입니다.</p></section>
+							<div class="issue-editor-actions"><label class="check-label"><input id="editorIssueResolved" type="checkbox"> 해결 완료</label><button class="delete-button hidden" id="deleteEditorIssue" type="button">삭제</button><span></span><button class="primary-button" type="submit">저장하기</button></div>
+						</form>
+					</section>
+				</section></main><div class="modal" id="scheduleModal" hidden aria-hidden="true">
+				<form class="modal-card" id="scheduleForm">
+					<div class="modal-heading">
+						<div>
+							<p class="eyebrow">SCHEDULE</p>
+							<h2 id="scheduleModalTitle">새 일정 등록</h2><code class="record-id" id="scheduleIdLabel"></code>
+						</div>
+						<button class="close-button" type="button" data-close="scheduleModal">×</button>
+					</div>
+					<input type="hidden" id="scheduleId"><label>일정 이름<input id="scheduleTitle" required maxlength="40" placeholder="예: 기획서 초안 작성"></label>
+				<fieldset class="color-picker">
+<legend>색상</legend>
+					<input id="scheduleColor" type="hidden" value="orange"><div class="color-options" role="radiogroup" aria-label="일정 색상">
+						<button class="color-option red" type="button" data-color="red" role="radio" aria-label="빨강">
+						</button>
+						<button class="color-option orange" type="button" data-color="orange" role="radio" aria-label="주황">
+						</button>
+						<button class="color-option yellow" type="button" data-color="yellow" role="radio" aria-label="노랑">
+						</button>
+						<button class="color-option green" type="button" data-color="green" role="radio" aria-label="초록">
+						</button>
+						<button class="color-option blue" type="button" data-color="blue" role="radio" aria-label="파랑">
+						</button>
+						<button class="color-option navy" type="button" data-color="navy" role="radio" aria-label="남색">
+						</button>
+						<button class="color-option purple" type="button" data-color="purple" role="radio" aria-label="보라">
+						</button>
+					</div>
+				</fieldset>
+<div class="form-columns">
+					<label>시작일<input id="scheduleStart" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" required placeholder="예: 20260801"></label>
+				<label>종료일<input id="scheduleEnd" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="8" required placeholder="예: 20260820"></label>
+		</div>
+		<label>메모 <textarea id="scheduleNote" rows="3" maxlength="200" placeholder="일정에 대한 간단한 메모를 남겨보세요.">
+	</textarea></label>
+<div class="modal-actions">
+	<button class="delete-button hidden" id="deleteSchedule" type="button">삭제</button>
+	<span>
+	</span>
+	<button class="secondary-button" type="button" data-close="scheduleModal">취소</button>
+	<button class="primary-button" type="submit">저장하기</button>
+</div>
+</form>
+</div>
+<div class="modal" id="todoModal" hidden aria-hidden="true">
+<form class="modal-card" id="todoForm">
+<div class="modal-heading">
+	<div>
+		<p class="eyebrow">TODO</p>
+		<h2 id="todoModalTitle">새 TODO 등록</h2><code class="record-id" id="todoIdLabel"></code>
+	</div>
+	<button class="close-button" type="button" data-close="todoModal">×</button>
+</div>
+<input id="todoId" type="hidden">
+<label>할 일<input id="todoTitle" required maxlength="60" placeholder="예: 발표 자료 레퍼런스 찾기"></label>
+<fieldset class="todo-tag-picker">
+<legend>태그</legend>
+<div class="todo-tag-options">
+	<button class="todo-tag now selected" type="button" data-todo-tag="now">NOW</button>
+	<button class="todo-tag next" type="button" data-todo-tag="next">NEXT UP</button>
+	<button class="todo-tag someday" type="button" data-todo-tag="someday">SOMEDAY</button>
+</div>
+</fieldset>
+<input id="todoTag" type="hidden" value="now"><label>메모 <textarea id="todoNote" rows="3" maxlength="200" placeholder="필요한 내용을 간단히 적어주세요.">
+</textarea></label>
+<div class="modal-actions">
+<button class="delete-button hidden" id="deleteTodo" type="button">삭제</button>
+<span>
+</span>
+<button class="secondary-button" type="button" data-close="todoModal">취소</button>
+<button class="primary-button" id="saveTodo" type="submit">등록하기</button>
+</div>
+</form>
+</div>
+<div class="modal" id="issueModal" hidden aria-hidden="true">
+<form class="modal-card" id="issueForm">
+<div class="modal-heading">
+<div>
+<p class="eyebrow">ISSUE</p>
+<h2 id="issueModalTitle">새 이슈 등록</h2>
+</div>
+<button class="close-button" type="button" data-close="issueModal">×</button>
+</div>
+<input type="hidden" id="issueId"><label>이슈 제목<input id="issueTitle" required maxlength="60" placeholder="예: 로그인 버튼이 보이지 않음"></label>
+<div class="form-columns">
+<label>등록일<input id="issueDate" type="date" required></label>
+<label>우선순위<select id="issuePriority"><option value="high">높음</option>
+<option value="medium" selected>보통</option>
+<option value="low">낮음</option></select></label>
+</div>
+<label>상세 내용<textarea id="issueDescription" rows="4" maxlength="300" placeholder="문제 상황이나 확인할 내용을 적어주세요.">
+</textarea></label>
+<label class="check-label">
+<input id="issueResolved" type="checkbox"> 해결 완료된 이슈입니다.</label>
+<div class="modal-actions">
+<button class="delete-button hidden" id="deleteIssue" type="button">삭제</button>
+<span>
+</span>
+<button class="secondary-button" type="button" data-close="issueModal">취소</button>
+<button class="primary-button" type="submit">저장하기</button>
+</div>
+</form>
+</div>
+<script src="js/app.js">
+</script>
+</body>
+</html>
