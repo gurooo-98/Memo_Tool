@@ -1,36 +1,26 @@
 const WEEK_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
 const FILE_COLLECTIONS = ["todos", "schedules", "issues"];
 let dataDirectoryHandle = null;
-let fileSyncQueued = false;
 
 /** 저장 폴더가 연결되기 전에는 빈 데이터 상태로 시작합니다. */
 function loadData() { return { schedules: [], issues: [], todos: [] }; }
 
-/** 앱 데이터를 연결된 저장 폴더의 개별 데이터 파일에만 저장합니다. */
-function saveData(data) { queueFileSync(data); }
-
-/** 선택 폴더에 TODO·일정·이슈를 각 항목별 JSON 파일로 동기화합니다. */
-async function syncDataFiles(data) {
-	for (const collection of FILE_COLLECTIONS) {
+/** 생성 또는 수정된 항목 하나만 해당 JSON 파일에 저장합니다. */
+async function saveRecord(collection, record) {
+	try {
 		const directory = await dataDirectoryHandle.getDirectoryHandle(collection, { create: true });
-		const records = data[collection];
-		const recordIds = new Set(records.map(record => record.id));
-		for await (const [name, handle] of directory.entries()) {
-			if (handle.kind === "file" && name.endsWith(".json") && !recordIds.has(name.slice(0, -5))) await directory.removeEntry(name);
-		}
-		for (const record of records) await writeJsonFile(directory, `${record.id}.json`, record);
-	}
+		await writeJsonFile(directory, `${record.id}.json`, record);
+		setFolderStatus("파일 저장 완료");
+	} catch { setFolderStatus("파일 저장 실패"); }
 }
 
-/** 한 화면 갱신에서 발생하는 여러 저장 요청을 하나의 파일 동기화로 묶습니다. */
-function queueFileSync(data) {
-	if (!dataDirectoryHandle || fileSyncQueued) return;
-	fileSyncQueued = true;
-	setTimeout(async () => {
-		fileSyncQueued = false;
-		try { await syncDataFiles(data); setFolderStatus("파일 저장 완료"); }
-		catch { setFolderStatus("파일 저장 실패"); }
-	}, 0);
+/** 삭제된 항목 하나에 대응하는 JSON 파일만 폴더에서 제거합니다. */
+async function deleteRecord(collection, id) {
+	try {
+		const directory = await dataDirectoryHandle.getDirectoryHandle(collection, { create: true });
+		await directory.removeEntry(`${id}.json`);
+		setFolderStatus("파일 삭제 완료");
+	} catch (error) { if (error.name !== "NotFoundError") setFolderStatus("파일 삭제 실패"); }
 }
 
 /** 항목 하나를 사람이 읽을 수 있게 들여쓴 JSON 파일로 작성합니다. */
@@ -62,7 +52,6 @@ async function chooseDataFolder() {
 		dataDirectoryHandle = await selectedDirectory.getDirectoryHandle("Memo_Tool_Data", { create: true });
 		const fileData = await readFolderData(dataDirectoryHandle);
 		if (Object.values(fileData).some(records => records.length)) { data.todos = fileData.todos; data.schedules = fileData.schedules; data.issues = fileData.issues; }
-		await syncDataFiles(data);
 		setFolderStatus(`연결됨: ${dataDirectoryHandle.name}`);
 		$("#storageGate").hidden = true;
 		render();
@@ -208,7 +197,7 @@ function renderTodos(container, todos) {
 			const row = document.createElement("article");
 			row.className = "todo-item";
 			row.innerHTML = `<button class="todo-check" type="button" aria-label="TODO 완료"></button><div><p>${escapeHtml(todo.title)}</p>${todo.note ? `<span>${escapeHtml(todo.note)}</span>` : ""}</div>`;
-			row.querySelector(".todo-check").addEventListener("click", event => { event.stopPropagation(); todo.done = true; render(); });
+			row.querySelector(".todo-check").addEventListener("click", async event => { event.stopPropagation(); todo.done = true; await saveRecord("todos", todo); render(); });
 			row.addEventListener("click", () => openTodo(todo));
 			list.append(row);
 		});
@@ -228,9 +217,10 @@ function renderTodos(container, todos) {
 		const row = document.createElement("article");
 		row.className = "completed-todo-item";
 		row.innerHTML = `<button class="todo-check" type="button" aria-label="TODO 다시 열기">✓</button><div><p>${escapeHtml(todo.title)}</p>${todo.note ? `<span>${escapeHtml(todo.note)}</span>` : ""}<time>${formatCreatedAt(todo.createdAt)}</time></div><span class="completed-tag ${todo.tag}">${({ now: "NOW", next: "NEXT UP", someday: "SOMEDAY" })[todo.tag]}</span>`;
-		row.querySelector(".todo-check").addEventListener("click", event => {
+		row.querySelector(".todo-check").addEventListener("click", async event => {
 			event.stopPropagation();
 			todo.done = false;
+			await saveRecord("todos", todo);
 			render();
 		});
 		row.addEventListener("click", () => openTodo(todo));
@@ -255,7 +245,6 @@ function render() {
 	renderTodos($("#todoGroups"), data.todos);
 	renderCalendar(calendarGrid, viewDate, data.schedules, openSchedule, date => openSchedule(null, date));
 	renderIssues($("#issueStats"), $("#issueList"), data.issues, issueFilter, issueSearch, openIssue);
-	saveData(data);
 }
 
 /** 일정 모달을 신규 등록 또는 기존 일정 편집 상태로 엽니다. */
@@ -364,18 +353,19 @@ document.querySelectorAll(".color-option").forEach(button => button.addEventList
 document.querySelectorAll(".todo-tag").forEach(button => button.addEventListener("click", () => selectTodoTag(button.dataset.todoTag)));
 
 /** 입력한 TODO를 현재 선택 태그로 저장합니다. */
-$("#todoForm").addEventListener("submit", event => { event.preventDefault();
+$("#todoForm").addEventListener("submit", async event => { event.preventDefault();
 	const id = $("#todoId").value;
 	const previous = data.todos.find(todo => todo.id === id);
 	const todo = { id: id || crypto.randomUUID(), title: $("#todoTitle").value.trim(), tag: $("#todoTag").value, note: $("#todoNote").value.trim(), createdAt: previous?.createdAt || new Date().toISOString(), done: previous?.done || false };
 	const index = data.todos.findIndex(item => item.id === id);
 	index < 0 ? data.todos.push(todo) : data.todos[index] = todo;
+	await saveRecord("todos", todo);
 	closeModal("todoModal");
 	render(); });
-$("#deleteTodo").addEventListener("click", () => { const id = $("#todoId").value; data.todos = data.todos.filter(todo => todo.id !== id); closeModal("todoModal"); render(); });
+$("#deleteTodo").addEventListener("click", async () => { const id = $("#todoId").value; data.todos = data.todos.filter(todo => todo.id !== id); await deleteRecord("todos", id); closeModal("todoModal"); render(); });
 
 /** 폼 입력값으로 일정을 새로 추가하거나 기존 항목을 갱신합니다. */
-$("#scheduleForm").addEventListener("submit", event => { event.preventDefault();
+$("#scheduleForm").addEventListener("submit", async event => { event.preventDefault();
 	const start = parseNumericDate($("#scheduleStart").value);
 	const end = parseNumericDate($("#scheduleEnd").value);
 	if (!start || !end) { alert("시작일과 종료일을 YYYYMMDD 형식의 숫자 8자리로 입력해주세요.");
@@ -384,28 +374,32 @@ $("#scheduleForm").addEventListener("submit", event => { event.preventDefault();
 	const item = { id: id || crypto.randomUUID(), title: $("#scheduleTitle").value.trim(), start, end, color: $("#scheduleColor").value, note: $("#scheduleNote").value.trim() };
 	const index = data.schedules.findIndex(schedule => schedule.id === id);
 	index < 0 ? data.schedules.push(item) : data.schedules[index] = item;
+	await saveRecord("schedules", item);
 	closeModal("scheduleModal");
 	render(); });
-$("#deleteSchedule").addEventListener("click", () => { const id = $("#scheduleId").value;
+$("#deleteSchedule").addEventListener("click", async () => { const id = $("#scheduleId").value;
 	data.schedules = data.schedules.filter(item => item.id !== id);
+	await deleteRecord("schedules", id);
 	closeModal("scheduleModal");
 	render(); });
 
 /** 폼 입력값으로 이슈를 새로 추가하거나 기존 항목을 갱신합니다. */
-$("#issueForm").addEventListener("submit", event => { event.preventDefault();
+$("#issueForm").addEventListener("submit", async event => { event.preventDefault();
 	const id = $("#issueId").value;
 	const item = { id: id || crypto.randomUUID(), title: $("#issueTitle").value.trim(), date: $("#issueDate").value, priority: $("#issuePriority").value, description: $("#issueDescription").value.trim(), resolved: $("#issueResolved").checked };
 	const index = data.issues.findIndex(issue => issue.id === id);
 	index < 0 ? data.issues.push(item) : data.issues[index] = item;
+	await saveRecord("issues", item);
 	closeModal("issueModal");
 	render(); });
-$("#deleteIssue").addEventListener("click", () => { const id = $("#issueId").value;
+$("#deleteIssue").addEventListener("click", async () => { const id = $("#issueId").value;
 	data.issues = data.issues.filter(item => item.id !== id);
+	await deleteRecord("issues", id);
 	closeModal("issueModal");
 	render(); });
 
 /** 제목·자유 태그·본문을 포함한 이슈 메모를 저장합니다. */
-$("#issueEditorForm").addEventListener("submit", event => {
+$("#issueEditorForm").addEventListener("submit", async event => {
 	event.preventDefault();
 	const id = $("#editorIssueId").value;
 	const previous = data.issues.find(issue => issue.id === id);
@@ -420,12 +414,14 @@ $("#issueEditorForm").addEventListener("submit", event => {
 	};
 	const index = data.issues.findIndex(item => item.id === id);
 	index < 0 ? data.issues.push(issue) : data.issues[index] = issue;
+	await saveRecord("issues", issue);
 	selectView("issues");
 	render();
 });
-$("#deleteEditorIssue").addEventListener("click", () => {
+$("#deleteEditorIssue").addEventListener("click", async () => {
 	const id = $("#editorIssueId").value;
 	data.issues = data.issues.filter(issue => issue.id !== id);
+	await deleteRecord("issues", id);
 	selectView("issues");
 	render();
 });
