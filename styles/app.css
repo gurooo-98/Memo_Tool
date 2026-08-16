@@ -991,7 +991,7 @@ h2 {
 .issue-tags { display:flex; flex-wrap:wrap; gap:4px; margin:8px 0 2px; }
 .issue-tag { padding:3px 5px; border-radius:4px; background:#edf0f5; color:#5d6f91; font:600 9px "DM Mono"; }
 .issue-panel .issue-list { align-content:start; }.issue-panel .issue-card { min-height:0; padding:11px 12px; border-left-width:3px; align-self:start; }.issue-panel .issue-title { overflow:hidden; margin:0; text-overflow:ellipsis; white-space:nowrap; }.issue-panel .issue-tags { margin:6px 0 0; }
-.issue-editor-panel { min-height:calc(100vh - 78px); padding:34px max(42px, calc((100vw - 1200px) / 2)); background:#f7f7f3; }
+.issue-editor-panel { min-height:calc(100vh - 78px); padding:34px 42px; background:#f7f7f3; }
 .issue-editor-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; color:var(--muted); font:600 10px "DM Mono"; letter-spacing:1px; }
 .back-button { padding:7px 0; border:0; background:transparent; color:var(--ink); font-weight:700; }
 .issue-editor { display:grid; gap:17px; max-width:1180px; margin:auto; }
